@@ -1,23 +1,34 @@
+from fastapi import FastAPI, File, UploadFile
 from pydub import AudioSegment
-import argparse
+import shutil
+import os
 
-def merge_audio(file1, file2, output_file):
-    # Load audio files
-    audio1 = AudioSegment.from_file(file1)
-    audio2 = AudioSegment.from_file(file2)
+app = FastAPI()
 
-    # Merge audio files (Concatenation)
-    combined = audio1 + audio2
+@app.post("/merge-audio/")
+async def merge_audio(file1: UploadFile = File(...), file2: UploadFile = File(...)):
+    try:
+        # Save uploaded files
+        with open(file1.filename, "wb") as buffer:
+            shutil.copyfileobj(file1.file, buffer)
+        with open(file2.filename, "wb") as buffer:
+            shutil.copyfileobj(file2.file, buffer)
 
-    # Export merged audio file
-    combined.export(output_file, format="mp3")
-    print(f"Merged audio saved as {output_file}")
+        # Load audio files
+        audio1 = AudioSegment.from_file(file1.filename)
+        audio2 = AudioSegment.from_file(file2.filename)
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Merge two audio files.")
-    parser.add_argument("--file1", required=True, help="Path to first audio file")
-    parser.add_argument("--file2", required=True, help="Path to second audio file")
-    parser.add_argument("--output", required=True, help="Output merged audio file")
+        # Merge audio
+        merged_audio = audio1 + audio2
+        merged_filename = "merged_audio.mp3"
+        merged_audio.export(merged_filename, format="mp3")
+
+        # Return the merged file as a response
+        return {"message": "Audio merged successfully!", "download_url": f"/download/{merged_filename}"}
     
-    args = parser.parse_args()
-    merge_audio(args.file1, args.file2, args.output)
+    except Exception as e:
+        return {"error": str(e)}
+    
+@app.get("/download/{filename}")
+async def download_file(filename: str):
+    return FileResponse(filename, media_type="audio/mpeg", filename=filename)
