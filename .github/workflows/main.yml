@@ -1,0 +1,35 @@
+name: Merge Audio API
+
+on:
+  workflow_dispatch:
+    inputs:
+      file1_url:
+        description: 'URL of first audio file'
+        required: true
+      file2_url:
+        description: 'URL of second audio file'
+        required: true
+
+jobs:
+  merge_audio:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Install dependencies
+        run: pip install pydub ffmpeg
+
+      - name: Download audio files
+        run: |
+          curl -o file1.mp3 ${{ github.event.inputs.file1_url }}
+          curl -o file2.mp3 ${{ github.event.inputs.file2_url }}
+
+      - name: Merge audio files
+        run: python merge_audio.py --file1 file1.mp3 --file2 file2.mp3 --output merged.mp3
+
+      - name: Upload Merged Audio
+        uses: actions/upload-artifact@v3
+        with:
+          name: merged-audio
+          path: merged.mp3
